@@ -39,10 +39,23 @@ Enabling the local patch's skip option in the last row gives `RAX=1` and
 `check_official_unicorn.py` runs the same four cases through the official
 Python wheels, independently of the Sogen fork. On Windows x86-64, official
 Unicorn **2.1.4** reproduces the last row: `RAX=0`, `EFLAGS=0x82`. Official
-Unicorn **2.1.2** produces the correct `RAX=1`, `EFLAGS=0x83` for all four
-cases. This establishes that the latest published official release is
-affected by this minimal case. It does not identify which intervening change
-introduced the regression.
+Unicorn **2.1.2** and **2.1.3** produce the correct `RAX=1`, `EFLAGS=0x83`
+for all four cases. The latest published official release is affected.
+
+An upstream source comparison identifies the first failing commit:
+
+| Upstream source commit | Both hooks: RAX | Both hooks: EFLAGS |
+| --- | ---: | ---: |
+| [`3a7bde03`](https://github.com/unicorn-engine/unicorn/commit/3a7bde03b843ed8e6f6adc3478096bae3547f5a4), parent | 1 | `0x83` |
+| [`4a13bc7c`](https://github.com/unicorn-engine/unicorn/commit/4a13bc7cb8c79250fb6151aabb0691a82123f4f4) | **0** | **`0x82`** |
+
+Both source revisions were built on Windows x86-64 with CMake Release,
+`UNICORN_ARCH=x86`, and the same Visual Studio toolchain. The Python test
+used the same 2.1.3 bindings for both runs and loaded each built `unicorn.dll`
+through `LIBUNICORN_PATH`; the loaded DLL path was verified. Commit
+`4a13bc7c` moves memory-hook PC synchronization from x86 translation code to
+`cpu_restore_state` in `cputlb.c`. That new state restoration also changes
+`cc_op` during `rep stosq`, causing the observed carry loss.
 
 To reproduce with an isolated wheel installation:
 
@@ -84,5 +97,4 @@ At the first `rep stosq` write, `restore_state_to_opc` changes `cc_op` from
 `CC_OP_EFLAGS` to `CC_OP_SUBL` after flags have been materialized. The carry
 bit is then lost before `jbe`. See
 [`../../docs/unicorn-write-hook-divergence.md`](../../docs/unicorn-write-hook-divergence.md)
-for the full-sample comparison. The exact source-level cause of the
-2.1.2-versus-2.1.4 regression has not yet been isolated.
+for the full-sample comparison.

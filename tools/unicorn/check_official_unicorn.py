@@ -4,6 +4,7 @@ if len(sys.argv) > 1:
     sys.path.insert(0, sys.argv[1])
 
 import unicorn
+from unicorn.unicorn_py3 import unicorn as unicorn_core
 from unicorn.x86_const import (
     UC_X86_REG_EFLAGS,
     UC_X86_REG_R8,
@@ -16,6 +17,7 @@ code = bytes.fromhex("4181f840020000f348ab7607b800000000eb05b80100000090")
 
 print("package", unicorn.__version__, unicorn.__file__)
 print("engine", unicorn.uc_version())
+print("library", unicorn_core.uclib._name)
 for write_hook in (False, True):
     for code_hook in (False, True):
         uc = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_64)
