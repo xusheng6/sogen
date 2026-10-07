@@ -2,7 +2,7 @@
 
 This branch includes the Windows emulation and TTD changes developed during the miner and Flare-On challenge 11 investigations. The changes cover mapped-image sharing, cross-thread contexts and hardware breakpoints, pagefile section view lifetime, stdout file information, relative time, and replay progress.
 
-The TTD metadata-only write hook depends on a local Unicorn change that has not been merged into `momo5502/unicorn`. Its patch is stored at `patches/unicorn/15940c9-metadata-write-hooks.patch`. After pulling this branch and initializing submodules, apply it before building:
+The TTD metadata-only write hook depends on a local Unicorn change that has not been merged into `momo5502/unicorn`. Its patch is stored at `patches/unicorn/15940c9-metadata-write-hooks.patch`. The exact flag and branch divergence that motivated it is documented in [unicorn-write-hook-divergence.md](unicorn-write-hook-divergence.md). After pulling this branch and initializing submodules, apply it before building:
 
 ```powershell
 git submodule update --init --recursive
