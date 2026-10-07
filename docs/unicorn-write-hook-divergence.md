@@ -27,4 +27,6 @@ Unicorn's write-hook path calls `cpu_restore_state` in `qemu/accel/tcg/cputlb.c`
 
 Thus the state update reinterprets already-materialized flag data as subtraction operands. The callback itself is empty. The extra state update changes a guest-visible carry flag and causes the incorrect branch. The metadata-only hook does not need guest register state, so skipping that update avoids the corruption in this run.
 
-This comparison establishes the mechanism in Sogen's Unicorn fork and this translated code path. A small standalone fixture using a separately installed Unicorn 2.1.2 did not reproduce it, so an upstream report should include a minimized reproduction using the exact fork, code-hook configuration, and translation conditions. The diagnostic edits used for this comparison were temporary and are not part of the branch.
+This comparison establishes the mechanism in Sogen's Unicorn fork and this translated code path. A separately installed Unicorn 2.1.2 did not reproduce it. The diagnostic edits used for this comparison were temporary and are not part of the branch.
+
+That minimized reproduction is now in [`tools/unicorn/rep_stos_flags.c`](../tools/unicorn/rep_stos_flags.c). It requires both a no-op write hook and a code hook that reads EFLAGS to trigger the same wrong branch in the fork.
