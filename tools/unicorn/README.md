@@ -36,10 +36,20 @@ Enabling the local patch's skip option in the last row gives `RAX=1` and
 `EFLAGS=0x83`. The source compiles without that extension by default; define
 `UNICORN_HAS_SKIP_PC_SYNC` only to show the workaround cases.
 
-An equivalent Python version of the last row, run with the installed stock
-`unicorn` Python package 2.1.2 on Windows, gives `RAX=1`, `EFLAGS=0x83`.
-This means we have a minimal reproducer for the checked-out fork, but have
-not established that current upstream Unicorn is affected.
+`check_official_unicorn.py` runs the same four cases through the official
+Python wheels, independently of the Sogen fork. On Windows x86-64, official
+Unicorn **2.1.4** reproduces the last row: `RAX=0`, `EFLAGS=0x82`. Official
+Unicorn **2.1.2** produces the correct `RAX=1`, `EFLAGS=0x83` for all four
+cases. This establishes that the latest published official release is
+affected by this minimal case. It does not identify which intervening change
+introduced the regression.
+
+To reproduce with an isolated wheel installation:
+
+```sh
+python -m pip install --no-deps --target ./unicorn-2.1.4 unicorn==2.1.4
+python check_official_unicorn.py ./unicorn-2.1.4
+```
 
 ## Build
 
@@ -66,12 +76,13 @@ reports a similar memory-hook-induced x86 flag/control-flow error involving
 #2041](https://github.com/unicorn-engine/unicorn/issues/2041) reports that
 adding memory hooks changes execution, but concerns self-modifying code and
 is still open. Neither is confirmed to be this exact `rep stosq`/lazy-flags
-failure.
+failure. The official 2.1.4 result makes this suitable for an upstream bug
+report using the standalone reproducer.
 
 In the Sogen case, the ordinary write-hook path calls `cpu_restore_state`.
 At the first `rep stosq` write, `restore_state_to_opc` changes `cc_op` from
 `CC_OP_EFLAGS` to `CC_OP_SUBL` after flags have been materialized. The carry
 bit is then lost before `jbe`. See
 [`../../docs/unicorn-write-hook-divergence.md`](../../docs/unicorn-write-hook-divergence.md)
-for the full-sample comparison. This is an observed explanation for this
-fork; the root cause of the fork-versus-stock difference remains open.
+for the full-sample comparison. The exact source-level cause of the
+2.1.2-versus-2.1.4 regression has not yet been isolated.
