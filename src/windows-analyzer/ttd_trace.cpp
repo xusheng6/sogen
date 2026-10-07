@@ -127,7 +127,9 @@ namespace sogen::ttd
         {
             return;
         }
-        access_event event{emu_.get_executed_instructions(), emu_.emu().read_instruction_pointer(), address, size, kind};
+        // The write hook skips Unicorn's state restoration, so RIP comes from the preceding instruction hook.
+        const auto ip = kind == access_kind::write ? emu_.vcpu(0).thread().current_ip : emu_.emu().read_instruction_pointer();
+        access_event event{emu_.get_executed_instructions(), ip, address, size, kind};
         if (kind == access_kind::execute && size <= 15 && !emu_.emu().try_read_memory(address, event.instruction_bytes.data(), size))
         {
             throw std::runtime_error("Cannot read executed instruction bytes");

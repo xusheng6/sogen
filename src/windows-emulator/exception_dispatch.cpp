@@ -260,9 +260,10 @@ namespace sogen
         CONTEXT64 ctx{};
         ctx.ContextFlags = CONTEXT64_ALL;
         cpu_context::save(vcpu.cpu, ctx);
-        ctx.Rip = win_emu.uses_instruction_precision() //
-                      ? thread.current_ip
-                      : vcpu.cpu.read_instruction_pointer();
+        const auto hardware_breakpoint = status == STATUS_SINGLE_STEP && (ctx.Dr6 & 0xF) != 0;
+        ctx.Rip = hardware_breakpoint || !win_emu.uses_instruction_precision() //
+                      ? vcpu.cpu.read_instruction_pointer()
+                      : thread.current_ip;
 
         exception_record record{};
         memset(&record, 0, sizeof(record));

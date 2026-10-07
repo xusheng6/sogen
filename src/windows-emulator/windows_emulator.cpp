@@ -598,9 +598,9 @@ namespace sogen
         {
             const uint64_t* instructions_{};
 
-            instruction_tick_clock(const uint64_t& instructions, const system_time_point system_start = {},
+            instruction_tick_clock(const uint64_t& instructions, const system_time_point system_start = std::chrono::system_clock::now(),
                                    const steady_time_point steady_start = {})
-                : tick_clock(1000, system_start, steady_start),
+                : tick_clock(10000000, system_start, steady_start),
                   instructions_(&instructions)
             {
             }
@@ -1777,6 +1777,15 @@ namespace sogen
         buffer.write(this->executed_instructions_);
         buffer.write_atomic(this->vcpus_[0]->switch_thread);
         buffer.write(this->use_relative_time_);
+        if (this->use_relative_time_)
+        {
+            const auto* relative_clock = dynamic_cast<const instruction_tick_clock*>(this->clock_.get());
+            if (!relative_clock)
+            {
+                throw std::runtime_error("Relative-time snapshot requires an instruction-tick clock");
+            }
+            buffer.write(relative_clock->get_system_start().time_since_epoch().count());
+        }
 
         this->version.serialize(buffer);
         this->registry.serialize_runtime_state(buffer);
@@ -1804,6 +1813,16 @@ namespace sogen
         if (old_relative_time != this->use_relative_time_)
         {
             throw std::runtime_error("Can not deserialize emulator with different time dimensions");
+        }
+        if (this->use_relative_time_)
+        {
+            auto* relative_clock = dynamic_cast<instruction_tick_clock*>(this->clock_.get());
+            if (!relative_clock)
+            {
+                throw std::runtime_error("Relative-time snapshot requires an instruction-tick clock");
+            }
+            const auto ticks = buffer.read<utils::clock::system_duration::rep>();
+            relative_clock->set_system_start(utils::clock::system_time_point(utils::clock::system_duration(ticks)));
         }
 
         this->version.deserialize(buffer);

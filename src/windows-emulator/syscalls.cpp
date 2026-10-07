@@ -687,6 +687,8 @@ namespace sogen
         BOOL handle_NtUserHideCaret();
         BOOL handle_NtUserGetObjectInformation();
         uint64_t handle_NtUserQueryWindow(const syscall_context& c, hwnd window_handle, uint32_t query_type);
+        uint32_t handle_NtUserInternalGetWindowText(const syscall_context& c, hwnd window_handle, emulator_pointer buffer,
+                                                    uint32_t max_count);
         int handle_NtUserSetScrollInfo();
         BOOL handle_NtUserIsTouchWindow();
         BOOL handle_NtUserGetWindowPlacement(const syscall_context& c, hwnd window_handle, emulator_pointer placement_address);
@@ -1762,6 +1764,7 @@ namespace sogen
         add_handler(NtUserHideCaret);
         add_handler(NtUserGetObjectInformation);
         add_handler(NtUserQueryWindow);
+        add_handler(NtUserInternalGetWindowText);
         add_handler(NtUserSetScrollInfo);
         add_handler(NtUserTrackMouseEvent);
         add_handler(NtGdiGetOutlineTextMetricsInternalW);

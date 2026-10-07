@@ -264,7 +264,7 @@ namespace sogen
                                                  const uint64_t thread_information, const uint32_t thread_information_length,
                                                  const emulator_object<uint32_t> return_length)
         {
-            const auto* thread = thread_handle == CURRENT_THREAD ? c.vcpu.active_thread : c.proc.threads.get(thread_handle);
+            auto* thread = thread_handle == CURRENT_THREAD ? c.vcpu.active_thread : c.proc.threads.get(thread_handle);
 
             if (!thread)
             {
@@ -786,12 +786,22 @@ namespace sogen
             thread->restore(c.emu);
 
             thread_context.access([&](CONTEXT64& context) {
-                if ((context.ContextFlags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
+                if ((cpu_context::effective_64bit_flags(context.ContextFlags) & CONTEXT_DEBUG_REGISTERS_64) ==
+                    CONTEXT_DEBUG_REGISTERS_64)
                 {
                     c.win_emu.callbacks.on_suspicious_activity("Reading debug registers");
                 }
 
                 cpu_context::save(c.emu, context);
+                if ((cpu_context::effective_64bit_flags(context.ContextFlags) & CONTEXT_DEBUG_REGISTERS_64) ==
+                    CONTEXT_DEBUG_REGISTERS_64)
+                {
+                    // The CPU exposes reserved DR6 bits as ones; Windows returns only
+                    // the status bits through NtGetContextThread. Windows also
+                    // strips the fixed bit 10 from DR7.
+                    context.Dr6 &= 0xE00F;
+                    context.Dr7 &= ~0x400ULL;
+                }
             });
 
             return STATUS_SUCCESS;
@@ -800,7 +810,7 @@ namespace sogen
         NTSTATUS handle_NtSetContextThread(const syscall_context& c, const handle thread_handle,
                                            const emulator_object<CONTEXT64> thread_context)
         {
-            const auto* thread = thread_handle == CURRENT_THREAD ? c.vcpu.active_thread : c.proc.threads.get(thread_handle);
+            auto* thread = thread_handle == CURRENT_THREAD ? c.vcpu.active_thread : c.proc.threads.get(thread_handle);
 
             if (!thread)
             {
@@ -825,7 +835,13 @@ namespace sogen
             const auto context = thread_context.read();
             cpu_context::restore(c.emu, context);
 
-            if ((context.ContextFlags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
+            if (needs_swich)
+            {
+                thread->save(c.emu);
+            }
+
+            if ((cpu_context::effective_64bit_flags(context.ContextFlags) & CONTEXT_DEBUG_REGISTERS_64) ==
+                CONTEXT_DEBUG_REGISTERS_64)
             {
                 c.win_emu.callbacks.on_suspicious_activity("Setting debug registers");
             }

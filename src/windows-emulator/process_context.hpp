@@ -525,6 +525,12 @@ namespace sogen
         handle_store<handle_types::file, file> files{};
         utils::insensitive_u16string_map<file_lock_ranges> file_locks{};
         handle_store<handle_types::section, section> sections{};
+        struct pagefile_view_state
+        {
+            uint64_t count{};
+            bool section_closed{};
+        };
+        std::map<uint64_t, pagefile_view_state> pagefile_views{};
         handle_store<handle_types::device, io_device_container> devices{};
         handle console_handle{};
         handle_store<handle_types::semaphore, semaphore> semaphores{};

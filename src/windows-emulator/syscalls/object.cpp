@@ -83,7 +83,19 @@ namespace sogen
             {
                 if (section_backing_address != 0)
                 {
-                    c.win_emu.memory.release_memory(section_backing_address, 0);
+                    if (auto view = c.proc.pagefile_views.find(section_backing_address); view != c.proc.pagefile_views.end())
+                    {
+                        view->second.section_closed = true;
+                        if (view->second.count == 0)
+                        {
+                            c.win_emu.memory.release_memory(section_backing_address, 0);
+                            c.proc.pagefile_views.erase(view);
+                        }
+                    }
+                    else
+                    {
+                        c.win_emu.memory.release_memory(section_backing_address, 0);
+                    }
                 }
                 return STATUS_SUCCESS;
             }

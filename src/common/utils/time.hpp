@@ -88,6 +88,16 @@ namespace sogen
                 return this->frequency_;
             }
 
+            system_time_point get_system_start() const
+            {
+                return this->system_start_;
+            }
+
+            void set_system_start(const system_time_point start)
+            {
+                this->system_start_ = start;
+            }
+
           private:
             uint64_t frequency_{1};
             system_time_point system_start_{};

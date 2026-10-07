@@ -5805,6 +5805,18 @@ namespace sogen
             return win->thread_id;
         }
 
+        uint32_t handle_NtUserInternalGetWindowText(const syscall_context& c, const hwnd window_handle,
+                                                    const emulator_pointer buffer, const uint32_t max_count)
+        {
+            const auto* win = c.proc.windows.get(window_handle);
+            if (!win)
+            {
+                return 0;
+            }
+
+            return static_cast<uint32_t>(copy_def_window_text(c, *win, max_count, buffer, false));
+        }
+
         int handle_NtUserSetScrollInfo()
         {
             return 0;

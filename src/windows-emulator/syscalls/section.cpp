@@ -489,6 +489,7 @@ namespace sogen
                     view_size.write(backing_size - aligned_offset);
                 }
                 base_address.write(section_entry->backing_address + aligned_offset);
+                ++c.proc.pagefile_views[section_entry->backing_address].count;
                 return STATUS_SUCCESS;
             }
 
@@ -687,6 +688,16 @@ namespace sogen
                 // when the last section handle is closed.
                 if (region_info.kind == memory_region_kind::pagefile_section_view)
                 {
+                    auto view = c.proc.pagefile_views.find(region_info.allocation_base);
+                    if (view == c.proc.pagefile_views.end() || view->second.count == 0)
+                    {
+                        return STATUS_INVALID_PARAMETER;
+                    }
+                    if (--view->second.count == 0 && view->second.section_closed)
+                    {
+                        c.win_emu.memory.release_memory(region_info.allocation_base, 0);
+                        c.proc.pagefile_views.erase(view);
+                    }
                     return STATUS_SUCCESS;
                 }
 

@@ -44,6 +44,11 @@ namespace sogen::unicorn
             return &this->hook_;
         }
 
+        uc_hook get() const
+        {
+            return this->hook_;
+        }
+
         unicorn_hook& operator=(unicorn_hook&& obj) noexcept
         {
             if (this != &obj)

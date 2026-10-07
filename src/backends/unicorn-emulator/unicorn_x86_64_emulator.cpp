@@ -701,6 +701,7 @@ namespace sogen::unicorn
                 unicorn_hook hook{*this};
                 uce(uc_hook_add(*this, hook.make_reference(), UC_HOOK_MEM_WRITE, wrapper.get_function(), wrapper.get_user_data(), address,
                                 calc_end_address(address, size)));
+                uce(uc_hook_set_skip_pc_sync(*this, hook.get(), true));
                 auto* container = this->create_hook_container();
                 container->add(std::move(wrapper), std::move(hook));
                 return container->as_opaque_hook();

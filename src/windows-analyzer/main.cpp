@@ -77,6 +77,7 @@ namespace sogen
             bool ttd_no_write_trace{false};
             bool ttd_no_execute_trace{false};
             std::optional<uint64_t> ttd_read{};
+            bool ttd_regs{false};
             std::filesystem::path ttd_strings{};
             std::filesystem::path ttd_buffers{};
             size_t ttd_min_string_length{6};
@@ -593,17 +594,40 @@ namespace sogen
                             return true;
                         }
                         const auto checkpoint_step = win_emu.get_executed_instructions();
-                        if (options.ttd_seek > checkpoint_step)
+                        while (win_emu.get_executed_instructions() < options.ttd_seek && !win_emu.process.exit_status)
                         {
-                            win_emu.start(static_cast<size_t>(options.ttd_seek - checkpoint_step));
+                            const auto before = win_emu.get_executed_instructions();
+                            win_emu.start(static_cast<size_t>(options.ttd_seek - before));
+                            if (win_emu.get_executed_instructions() == before)
+                            {
+                                break;
+                            }
                         }
                         if (win_emu.get_executed_instructions() != options.ttd_seek)
                         {
+                            if (win_emu.get_executed_instructions() > options.ttd_seek)
+                            {
+                                return emit_failure("TTD position falls within an idle-time gap; next position is " +
+                                                    std::to_string(win_emu.get_executed_instructions()));
+                            }
                             return emit_failure("TTD replay stopped before requested position");
                         }
                         win_emu.log.log("TTD checkpoint %llx:0\n", static_cast<unsigned long long>(checkpoint_step));
                         win_emu.log.log("TTD position %llx:0 RIP %llx\n", static_cast<unsigned long long>(options.ttd_seek),
                                         static_cast<unsigned long long>(win_emu.emu().read_instruction_pointer()));
+                        if (options.ttd_regs)
+                        {
+                            auto& cpu = win_emu.emu();
+                            win_emu.log.log("TTD regs RAX %llx RCX %llx RDX %llx R8 %llx R9 %llx R13 %llx RSP %llx RFLAGS %llx\n",
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::rax)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::rcx)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::rdx)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::r8)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::r9)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::r13)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::rsp)),
+                                            static_cast<unsigned long long>(cpu.reg(x86_register::rflags)));
+                        }
                         if (options.ttd_read)
                         {
                             const auto value = win_emu.emu().read_memory<uint64_t>(*options.ttd_read);
@@ -669,11 +693,12 @@ namespace sogen
                             {
                                 break;
                             }
-                            if (win_emu.get_executed_instructions() - before != budget)
+                            if (win_emu.get_executed_instructions() == before)
                             {
                                 break;
                             }
-                            if (!options.ttd_max_instructions || win_emu.get_executed_instructions() < options.ttd_max_instructions)
+                            if (win_emu.get_executed_instructions() - before == budget &&
+                                (!options.ttd_max_instructions || win_emu.get_executed_instructions() < options.ttd_max_instructions))
                             {
                                 ttd_recorder->checkpoint();
                             }
@@ -1189,6 +1214,7 @@ namespace sogen
             app.add_flag("--ttd-no-write-trace", options.ttd_no_write_trace, "Disable memory-write event recording");
             app.add_flag("--ttd-no-execute-trace", options.ttd_no_execute_trace, "Disable instruction-execute event recording");
             app.add_option("--ttd-read", options.ttd_read, "Read eight guest bytes at the replay position");
+            app.add_flag("--ttd-regs", options.ttd_regs, "Print guest registers at the replay position");
             app.add_option("--ttd-strings", options.ttd_strings, "Recover strings during deterministic replay into a TSV file");
             app.add_option("--ttd-buffers", options.ttd_buffers, "Recover written buffers during deterministic replay into a TSV file");
             app.add_option("--ttd-min-string-length", options.ttd_min_string_length, "Minimum recovered string length")

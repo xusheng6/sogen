@@ -614,6 +614,20 @@ namespace sogen
                 return status;
             };
 
+            if ((file_handle == STDOUT_HANDLE || file_handle == STDIN_HANDLE) && info_class == FileAllInformation)
+            {
+                if (length < sizeof(FILE_ALL_INFORMATION))
+                {
+                    return ret(STATUS_INFO_LENGTH_MISMATCH);
+                }
+
+                FILE_ALL_INFORMATION info{};
+                info.BasicInformation.FileAttributes = FILE_ATTRIBUTE_NORMAL;
+                info.StandardInformation.NumberOfLinks = 1;
+                c.emu.write_memory(file_information, info);
+                return ret(STATUS_SUCCESS, sizeof(info));
+            }
+
             const auto* f = c.proc.files.get(file_handle);
             if (!f)
             {
@@ -1947,6 +1961,13 @@ namespace sogen
                 {
                     return STATUS_ACCESS_DENIED;
                 }
+            }
+
+            if (const auto* executable = c.win_emu.mod_manager.executable;
+                executable && path == executable->module_path &&
+                (desired_access & (GENERIC_WRITE | FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES | DELETE)))
+            {
+                return STATUS_SHARING_VIOLATION;
             }
 
             std::u16string mode = map_mode(desired_access, create_disposition);

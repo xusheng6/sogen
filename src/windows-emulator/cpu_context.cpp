@@ -8,7 +8,8 @@ namespace sogen
     {
         void restore(x86_64_cpu& emu, const CONTEXT64& context)
         {
-            if ((context.ContextFlags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
+            const auto flags = effective_64bit_flags(context.ContextFlags);
+            if ((flags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
             {
                 emu.reg(x86_register::dr0, context.Dr0);
                 emu.reg(x86_register::dr1, context.Dr1);
@@ -18,7 +19,7 @@ namespace sogen
                 emu.reg(x86_register::dr7, context.Dr7);
             }
 
-            if ((context.ContextFlags & CONTEXT_CONTROL_64) == CONTEXT_CONTROL_64)
+            if ((flags & CONTEXT_CONTROL_64) == CONTEXT_CONTROL_64)
             {
                 emu.reg<uint16_t>(x86_register::ss, context.SegSs);
                 emu.reg<uint16_t>(x86_register::cs, context.SegCs);
@@ -29,7 +30,7 @@ namespace sogen
                 emu.reg<uint32_t>(x86_register::eflags, context.EFlags);
             }
 
-            if ((context.ContextFlags & CONTEXT_INTEGER_64) == CONTEXT_INTEGER_64)
+            if ((flags & CONTEXT_INTEGER_64) == CONTEXT_INTEGER_64)
             {
                 emu.reg(x86_register::rax, context.Rax);
                 emu.reg(x86_register::rbx, context.Rbx);
@@ -56,7 +57,7 @@ namespace sogen
                 emu.reg<uint16_t>(x86_register::gs, context.SegGs);
             }*/
 
-            if ((context.ContextFlags & CONTEXT_FLOATING_POINT_64) == CONTEXT_FLOATING_POINT_64)
+            if ((flags & CONTEXT_FLOATING_POINT_64) == CONTEXT_FLOATING_POINT_64)
             {
                 emu.reg<uint16_t>(x86_register::fpcw, context.FltSave.ControlWord);
                 emu.reg<uint16_t>(x86_register::fpsw, context.FltSave.StatusWord);
@@ -69,7 +70,7 @@ namespace sogen
                 }
             }
 
-            if ((context.ContextFlags & CONTEXT_XSTATE_64) == CONTEXT_XSTATE_64)
+            if ((flags & CONTEXT_XSTATE_64) == CONTEXT_XSTATE_64)
             {
                 emu.reg<uint32_t>(x86_register::mxcsr, context.MxCsr);
 
@@ -83,7 +84,9 @@ namespace sogen
 
         void save(x86_64_cpu& emu, CONTEXT64& context)
         {
-            if ((context.ContextFlags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
+            const auto flags = effective_64bit_flags(context.ContextFlags);
+            context.ContextFlags = flags;
+            if ((flags & CONTEXT_DEBUG_REGISTERS_64) == CONTEXT_DEBUG_REGISTERS_64)
             {
                 context.Dr0 = emu.reg(x86_register::dr0);
                 context.Dr1 = emu.reg(x86_register::dr1);
@@ -93,7 +96,7 @@ namespace sogen
                 context.Dr7 = emu.reg(x86_register::dr7);
             }
 
-            if ((context.ContextFlags & CONTEXT_CONTROL_64) == CONTEXT_CONTROL_64)
+            if ((flags & CONTEXT_CONTROL_64) == CONTEXT_CONTROL_64)
             {
                 context.SegSs = emu.reg<uint16_t>(x86_register::ss);
                 context.SegCs = emu.reg<uint16_t>(x86_register::cs);
@@ -102,7 +105,7 @@ namespace sogen
                 context.EFlags = emu.reg<uint32_t>(x86_register::eflags);
             }
 
-            if ((context.ContextFlags & CONTEXT_INTEGER_64) == CONTEXT_INTEGER_64)
+            if ((flags & CONTEXT_INTEGER_64) == CONTEXT_INTEGER_64)
             {
                 context.Rax = emu.reg(x86_register::rax);
                 context.Rbx = emu.reg(x86_register::rbx);
@@ -121,7 +124,7 @@ namespace sogen
                 context.R15 = emu.reg(x86_register::r15);
             }
 
-            if ((context.ContextFlags & CONTEXT_SEGMENTS_64) == CONTEXT_SEGMENTS_64)
+            if ((flags & CONTEXT_SEGMENTS_64) == CONTEXT_SEGMENTS_64)
             {
                 context.SegDs = emu.reg<uint16_t>(x86_register::ds);
                 context.SegEs = emu.reg<uint16_t>(x86_register::es);
@@ -129,7 +132,7 @@ namespace sogen
                 context.SegGs = emu.reg<uint16_t>(x86_register::gs);
             }
 
-            if ((context.ContextFlags & CONTEXT_FLOATING_POINT_64) == CONTEXT_FLOATING_POINT_64)
+            if ((flags & CONTEXT_FLOATING_POINT_64) == CONTEXT_FLOATING_POINT_64)
             {
                 context.FltSave.ControlWord = emu.reg<uint16_t>(x86_register::fpcw);
                 context.FltSave.StatusWord = emu.reg<uint16_t>(x86_register::fpsw);
@@ -141,7 +144,7 @@ namespace sogen
                 }
             }
 
-            if ((context.ContextFlags & CONTEXT_XSTATE_64) == CONTEXT_XSTATE_64)
+            if ((flags & CONTEXT_XSTATE_64) == CONTEXT_XSTATE_64)
             {
                 context.MxCsr = emu.reg<uint32_t>(x86_register::mxcsr);
                 for (int i = 0; i < 16; i++)

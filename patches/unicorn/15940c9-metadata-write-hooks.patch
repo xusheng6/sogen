@@ -1,0 +1,78 @@
+From 15940c97e524f1f8a9767315a06f5a157f9371ea Mon Sep 17 00:00:00 2001
+From: Xusheng <xusheng@vector35.com>
+Date: Sun, 4 Oct 2026 14:50:11 -0400
+Subject: [PATCH] Allow metadata write hooks without CPU state restoration
+
+---
+ include/uc_priv.h         |  1 +
+ include/unicorn/unicorn.h |  4 ++++
+ qemu/accel/tcg/cputlb.c   |  2 +-
+ uc.c                      | 12 ++++++++++++
+ 4 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/include/uc_priv.h b/include/uc_priv.h
+index 6a7cda8..c0410d4 100644
+--- a/include/uc_priv.h
++++ b/include/uc_priv.h
+@@ -170,6 +170,7 @@ struct hook {
+     int op_flags;   // opcode flags for HOOK_TCG_OPCODE
+     bool to_delete; // set to true when the hook is deleted by the user. The
+                     // destruction of the hook is delayed.
++    bool skip_pc_sync; // Metadata-only memory hooks can use an external instruction address.
+     uint64_t begin, end; // only trigger if PC or memory access is in this
+                          // address (depends on hook type)
+     void *callback;      // a uc_cb_* type
+diff --git a/include/unicorn/unicorn.h b/include/unicorn/unicorn.h
+index cbf044d..e144772 100644
+--- a/include/unicorn/unicorn.h
++++ b/include/unicorn/unicorn.h
+@@ -1142,6 +1142,10 @@ UNICORN_EXPORT
+ uc_err uc_hook_add(uc_engine *uc, uc_hook *hh, int type, void *callback,
+                    void *user_data, uint64_t begin, uint64_t end, ...);
+ 
++/* Avoid restoring CPU state before a metadata-only memory hook callback. */
++UNICORN_EXPORT
++uc_err uc_hook_set_skip_pc_sync(uc_engine *uc, uc_hook hh, bool skip);
++
+ /*
+  Unregister (remove) a hook callback.
+  This API removes the hook callback registered by uc_hook_add().
+diff --git a/qemu/accel/tcg/cputlb.c b/qemu/accel/tcg/cputlb.c
+index 3d0bebd..88a1e57 100644
+--- a/qemu/accel/tcg/cputlb.c
++++ b/qemu/accel/tcg/cputlb.c
+@@ -2201,7 +2201,7 @@ store_helper(CPUArchState *env, target_ulong addr, uint64_t val,
+                 continue;
+             if (!HOOK_BOUND_CHECK(hook, paddr))
+                 continue;
+-            if (!synced && !uc->skip_sync_pc_on_exit && retaddr) {
++            if (!hook->skip_pc_sync && !synced && !uc->skip_sync_pc_on_exit && retaddr) {
+                 cpu_restore_state(uc->cpu, retaddr, false);
+                 synced = true;
+             }
+diff --git a/uc.c b/uc.c
+index 43cd147..3924852 100644
+--- a/uc.c
++++ b/uc.c
+@@ -2066,6 +2066,18 @@ uc_err uc_hook_del(uc_engine *uc, uc_hook hh)
+     return UC_ERR_OK;
+ }
+ 
++UNICORN_EXPORT
++uc_err uc_hook_set_skip_pc_sync(uc_engine *uc, uc_hook hh, bool skip)
++{
++    struct hook *hook = (struct hook *)hh;
++    UC_INIT(uc);
++    if (!hook || !(hook->type & UC_HOOK_MEM_WRITE)) {
++        return UC_ERR_ARG;
++    }
++    hook->skip_pc_sync = skip;
++    return UC_ERR_OK;
++}
++
+ UNICORN_EXPORT
+ uc_err uc_hook_set_user_data(uc_engine *uc, uc_hook hh, void *user_data)
+ {
+-- 
+2.54.0.windows.1
+

@@ -683,6 +683,7 @@ namespace sogen
         buffer.write(this->files);
         buffer.write_map(this->file_locks);
         buffer.write(this->sections);
+        buffer.write_map(this->pagefile_views);
         buffer.write(this->devices);
         buffer.write(this->console_handle);
         buffer.write(this->semaphores);
@@ -778,6 +779,7 @@ namespace sogen
         buffer.read(this->files);
         buffer.read_map(this->file_locks);
         buffer.read(this->sections);
+        buffer.read_map(this->pagefile_views);
         buffer.read(this->devices);
         buffer.read(this->console_handle);
         buffer.read(this->semaphores);
