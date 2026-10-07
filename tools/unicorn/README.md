@@ -57,6 +57,13 @@ through `LIBUNICORN_PATH`; the loaded DLL path was verified. Commit
 `cpu_restore_state` in `cputlb.c`. That new state restoration also changes
 `cc_op` during `rep stosq`, causing the observed carry loss.
 
+The upstream `dev` branch at
+[`938efd13`](https://github.com/unicorn-engine/unicorn/commit/938efd13aeab73155f31cf707a2094c6ccaa36dd)
+(August 28, 2026) also produces `RAX=0`, `EFLAGS=0x82` in the both-hooks
+case. It was built with the same Windows x86-64 settings and tested with
+the 2.1.4 Python bindings loading that build's DLL through
+`LIBUNICORN_PATH`.
+
 To reproduce with an isolated wheel installation:
 
 ```sh
